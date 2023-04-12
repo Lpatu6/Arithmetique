@@ -1,0 +1,161 @@
+import tkinter as tk 
+import pygame
+from pygame.locals import *
+from tkinter import filedialog 
+from PIL import Image #pour pouvoir prendre une image de l'appareil de l'utilisateur
+from screeninfo import get_monitors #pip install screeninfo, méthode qui prend la resolution de l'écran
+
+    
+def interactionsImage():
+    root = tk.Tk() 
+    root.withdraw() 
+    file_path = filedialog.askopenfilename() 
+    return file_path
+
+
+class Main :
+    def __init__(self, image, direction, nbRotation):
+        """ Main()
+            Affiche l'image 'buffon.png' dans une fenêtre pygame
+            et applique la méthode rotation().
+        """
+        
+        #Assert pour verifier les conditions de rotation de l'image
+        assert direction == "d" or direction == "g", "Vous avez transmis une direction non conforme"
+        assert int(nbRotation) < 4, "Le nombre de rotation est trop grand"
+        
+        
+        self.image = image
+        self.direction = direction
+        self.nbRotation = nbRotation
+        self.userImage = Image.open(self.image) #le chemin de l'image choisis par l'utilisateur
+        self.tailleImage = 0
+        self.listeCarré = [2]
+        self.p_Liste = []
+        
+        self.screenWidth = get_monitors()[0].width #resolution de l'écran de l'utilisateur
+        self.screenHeight = get_monitors()[0].height
+        pygame.init()
+        
+        
+        for i in range(12):#boucle qui créer une liste avec toute les dimensions possible en carré de 2 inférieure à la taille de l'écran de l'utilisateur
+            if self.listeCarré[-1] * 2 < self.screenWidth and self.listeCarré[-1] * 2 < self.screenHeight:
+                self.listeCarré.append(self.listeCarré[-1] * 2 )
+        
+        self.interaction()
+        pygame.display.update()
+    
+
+        #self.rotation()
+        for i in range(int(self.nbRotation)):#on fait tourner l'image le nombre de fois l'utilisateur demande
+            self.rotation_dpr(0,self.tailleImage,self.tailleImage//2, self.direction)
+        
+        self.hold()
+    
+    def interaction(self): #methode qui rend la taille de la fenêtre proportionelle à celle de l'image en ayant des cotés de puissance de 2, sauf si la taille de l'image excéde la taille de l'écran de l'utilisateur, l'image sera rapticit
+        self.window = pygame.display.set_mode((self.imageTaille(), self.imageTaille()))
+        image = pygame.image.load(self.image)
+        self.window.blit(image, (0, 0))
+        
+        
+    def imageTaille(self): #methode qui trouve la bonne taille des cotés de la fenêtre par rapport a l'image et la taille de l'écran de l'utilisateur 
+        if self.userImage.size[0] in self.listeCarré and self.userImage.size[1] in self.listeCarré:
+            self.tailleImage = max(self.userImage.size[0], self.userImage.size[1])
+            return max(self.userImage.size[0], self.userImage.size[1])
+        else:
+            for i in self.listeCarré: #on trouve la taille de la fenêtre adéquate 
+                if i > self.userImage.size[0] and i > self.userImage.size[1]:
+                    self.tailleImage = i
+                    print("Votre image n a pas des cotés de carré de 2, elle aura alors des bordures noire dans la fenêtre")
+                    return i
+                    
+            self.tailleImage = self.listeCarré[-1] #si l'image est trop grande on prend la taille la plus grande pour la fenêtre et on coupe l'image en prenant ses pixels en haut a gauche
+            print("Votre image est trop grande, elle est alors rognée en haut a gauche")
+            return self.listeCarré[-1]
+                    
+        
+
+    def hold(self):
+        """ hold() -> None
+            Maintient la fenêtre ouverte jusqu'à sa fermeture
+            ou la pression de la touche 'Echap'."""
+        lock = True
+        while lock :
+            events_list = pygame.event.get()
+            for event in events_list :
+                if event.type == QUIT :
+                    lock = False
+                if event.type == KEYDOWN :
+                    if event.key == K_ESCAPE :
+                        lock = False
+        pygame.quit()
+        
+
+    def rotation(self):#méthode iterative de la rotation
+        L = self.tailleImage
+        """ rotation()->None 
+            Tourne l'image d'un quart de tour."""
+        """ Le code ci-dessous n'est donné qu'à titre
+            d'exemple de manipulation des valeurs des
+            pixels (méthodes get_at et set_at)."""
+
+        for x in range(L):
+            pixels = []
+            for y in range(L):
+                pixels.append(self.window.get_at((x, y)))
+            self.p_Liste.append(pixels)
+        
+        for x in range(len(self.p_Liste)):
+             for y in range(len(self.p_Liste[0])):
+                self.window.set_at((L - y, x), self.p_Liste[x][y])
+        pygame.display.update()
+
+                
+            
+    def rotation_dpr(self,x, y, t, direction):#methode recursive de la rotation
+        if t > 1:
+            self.rotation_dpr(x,y,t//2, direction)
+            self.rotation_dpr(x,y-t,t//2, direction)
+            self.rotation_dpr(x+t,y,t//2, direction)
+            self.rotation_dpr(x+t,y-t,t//2, direction)
+        
+        if direction == "d":#si l'utilisateur decide de tourner l'image a droite
+            for i in range(x, x+ t): 
+                for j in range(y-2*t, y-t):
+                    tempsHG = self.window.get_at((i, j))
+                    tempsHD = self.window.get_at((i+t, j))
+                    tempsBG = self.window.get_at((i, j+t))
+                    tempsBD = self.window.get_at((i+t, j+t))
+                    
+                
+        
+                    self.window.set_at((i+t, j), tempsHG)
+                    self.window.set_at((i, j+t), tempsBD)
+                    self.window.set_at((i+t, j+t), tempsHD)
+                    self.window.set_at((i, j), tempsBG)
+        
+        else:#si l'utilisateur decide de tourner l'image a gauche
+            for i in range(x, x+ t): 
+                for j in range(y-2*t, y-t):
+                    tempsHG = self.window.get_at((i, j))
+                    tempsHD = self.window.get_at((i+t, j))
+                    tempsBG = self.window.get_at((i, j+t))
+                    tempsBD = self.window.get_at((i+t, j+t))
+                    
+                
+        
+                    self.window.set_at((i, j+t), tempsHG)
+                    self.window.set_at((i+t, j), tempsBD)
+                    self.window.set_at((i, j), tempsHD)
+                    self.window.set_at((i+t, j+t), tempsBG)
+                    
+                    
+        return pygame.display.update()
+        
+###LANCEMENT DE LA ROTATION
+Main(interactionsImage(), input("Quelle est le sens de rotation de votre image ('d' pour droite ET 'g' pour gauche):"), input("Combien de rotation l'image devra faire dans cette direction (max 3):"))
+    
+
+        
+    
+            
